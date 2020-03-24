@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strava-segemnt-ranking/backend/strava"
+	"sync"
 	"time"
 )
 
@@ -92,24 +93,32 @@ func SegmentHandler(w http.ResponseWriter, r *http.Request) {
 		All         int    `json:"all"`
 		Position    int    `json:"position"`
 	}
-	var rankings []segmentRanking
-	for _, segment := range segments {
-		ranking, err := stravaApi.SegmentRanking(segment.Id)
-		if err != nil {
-			log.Errorf("failed to read segment ranking on segment %d - %s", segment.Id, err.Error())
-			continue
-		}
-		log.Debugf("%d/%d on Segment: %s (%d)", ranking.Position, ranking.All, segment.Name, segment.Id)
-		rankings = append(rankings, segmentRanking{
-			Start: corner{
-				Lat: segment.Start[0],
-				Lng: segment.Start[1],
-			},
-			SegmentName: segment.Name,
-			All:         ranking.All,
-			Position:    ranking.Position,
-		})
+	rankings := make([]segmentRanking, len(segments))
+
+	var wg sync.WaitGroup
+	wg.Add(len(segments))
+	for i, segment := range segments {
+		go func(index int, segment strava.Segment) {
+			defer wg.Done()
+			ranking, err := stravaApi.SegmentRanking(segment.Id)
+			if err != nil {
+				log.Errorf("failed to read segment ranking on segment %d - %s", segment.Id, err.Error())
+				return
+			}
+			log.Debugf("%d/%d on Segment: %s (%d)", ranking.Position, ranking.All, segment.Name, segment.Id)
+			rankings[index] = segmentRanking{
+				Start: corner{
+					Lat: segment.Start[0],
+					Lng: segment.Start[1],
+				},
+				SegmentName: segment.Name,
+				All:         ranking.All,
+				Position:    ranking.Position,
+			}
+		}(i, segment)
 	}
+	wg.Wait()
+	log.Info("finish request")
 	err = json.NewEncoder(w).Encode(rankings)
 	if err != nil {
 		respondInternalServerError(w)
