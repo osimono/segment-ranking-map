@@ -48,8 +48,9 @@ func (c Corner) bounds() string {
 }
 
 type Segment struct {
-	Id   int64  `json:"id"`
-	Name string `json:"name"`
+	Id    int64     `json:"id"`
+	Name  string    `json:"name"`
+	Start []float64 `json:"start_latlng"`
 }
 
 func (a Api) Segments(southwestCorner, northEastCorner Corner) (segments []Segment, err error) {
