@@ -17,7 +17,7 @@ type Api struct {
 func NewApi(token string) Api {
 	return Api{
 		client: http.DefaultClient,
-		base:   "https://www.strava.com/strava/v3",
+		base:   "https://www.strava.com/api/v3",
 		token:  token,
 	}
 }
